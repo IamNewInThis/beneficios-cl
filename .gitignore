@@ -21,6 +21,9 @@ venv/
 playwright-report/
 test-results/
 
+# Design reference docs (awesome-design-md)
+revolut/
+
 # OS / editor
 .DS_Store
 *.swp
