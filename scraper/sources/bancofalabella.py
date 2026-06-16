@@ -3,10 +3,18 @@
 El sitio usa Contentful CMS con GraphQL API pública. Consultamos directamente
 el API de Contentful para obtener beneficios estructurados (sin IA ni browser).
 """
-import requests
+import os
 
-SPACE_ID = "p6eyia4djstu"
-ACCESS_TOKEN = "560c0ddde9630e43122ef3e7879d69013844ee3d48c566d4ba93125924f080dd"
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Token de Contentful Content Delivery (solo lectura) del espacio público de
+# Banco Falabella. No es un secreto propio —es el mismo token que su sitio
+# expone al navegador—, pero se lee del entorno para no versionarlo.
+SPACE_ID = os.environ.get("FALABELLA_CONTENTFUL_SPACE_ID", "p6eyia4djstu")
+ACCESS_TOKEN = os.environ["FALABELLA_CONTENTFUL_TOKEN"]
 ENDPOINT = f"https://graphql.contentful.com/content/v1/spaces/{SPACE_ID}"
 
 QUERY = """
