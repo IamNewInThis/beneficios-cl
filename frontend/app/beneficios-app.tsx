@@ -126,18 +126,27 @@ export function BeneficiosApp({ beneficios }: { beneficios: BeneficioDetalle[] }
   const ultimaActualizacion = maxActualizacion(beneficios);
 
   return (
-    <>
-      <main className="mx-auto min-h-screen max-w-7xl px-4 py-4">
-        <Header
-          ventana={ventana}
-          onChangeVentana={setVentana}
-          busqueda={busqueda}
-          onChangeBusqueda={setBusqueda}
-          fecha={fechaFormateada()}
-          ultimaActualizacion={ultimaActualizacion}
-        />
+    <main className="mx-auto min-h-screen max-w-7xl px-4 py-4">
+      <Header
+        ventana={ventana}
+        onChangeVentana={setVentana}
+        busqueda={busqueda}
+        onChangeBusqueda={setBusqueda}
+        fecha={fechaFormateada()}
+        ultimaActualizacion={ultimaActualizacion}
+      />
 
-        <MobileFilters
+      <MobileFilters
+        categorias={categorias}
+        tarjetas={tarjetas}
+        filtroCategoria={filtroCategoria}
+        filtroTarjeta={filtroTarjeta}
+        onChangeCategoria={setFiltroCategoria}
+        onChangeTarjeta={setFiltroTarjeta}
+      />
+
+      <div className="lg:flex lg:gap-6">
+        <SidebarFilters
           categorias={categorias}
           tarjetas={tarjetas}
           filtroCategoria={filtroCategoria}
@@ -146,37 +155,26 @@ export function BeneficiosApp({ beneficios }: { beneficios: BeneficioDetalle[] }
           onChangeTarjeta={setFiltroTarjeta}
         />
 
-        <div className="lg:flex lg:gap-6">
-          <SidebarFilters
-            categorias={categorias}
-            tarjetas={tarjetas}
-            filtroCategoria={filtroCategoria}
-            filtroTarjeta={filtroTarjeta}
-            onChangeCategoria={setFiltroCategoria}
-            onChangeTarjeta={setFiltroTarjeta}
-          />
-
-          <div className="flex-1">
-            {comercios.length === 0 ? (
-              <div className="mt-12 rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500">
-                {beneficios.length === 0
-                  ? "No hay beneficios cargados todavía. Configura Supabase y corre el scraper para poblar la base de datos."
-                  : "Ningún beneficio coincide con los filtros actuales."}
-              </div>
-            ) : (
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {comercios.map((c) => (
-                  <Card
-                    key={c.comercio}
-                    comercio={c}
-                    onClick={() => setSeleccionado(c)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+        <div className="flex-1">
+          {comercios.length === 0 ? (
+            <div className="mt-12 rounded-card border border-hairline-dark p-8 text-center text-white/40">
+              {beneficios.length === 0
+                ? "No hay beneficios cargados todavía. Configura Supabase y corre el scraper para poblar la base de datos."
+                : "Ningún beneficio coincide con los filtros actuales."}
+            </div>
+          ) : (
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {comercios.map((c) => (
+                <Card
+                  key={c.comercio}
+                  comercio={c}
+                  onClick={() => setSeleccionado(c)}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      </main>
+      </div>
 
       {seleccionado && (
         <ModalDetalle
@@ -184,7 +182,7 @@ export function BeneficiosApp({ beneficios }: { beneficios: BeneficioDetalle[] }
           onClose={() => setSeleccionado(null)}
         />
       )}
-    </>
+    </main>
   );
 }
 
@@ -206,7 +204,7 @@ function Header({
   return (
     <header>
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">Beneficios</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Beneficios</h1>
         <div className="flex items-center gap-3">
           <div className="relative">
             <input
@@ -214,13 +212,13 @@ function Header({
               placeholder="Buscar..."
               value={busqueda}
               onChange={(e) => onChangeBusqueda(e.target.value)}
-              className="w-40 rounded-lg border border-gray-200 bg-gray-100 py-1.5 pl-8 pr-3 text-sm placeholder-gray-400 focus:border-gray-300 focus:outline-none"
+              className="w-40 rounded-full bg-surface-elevated py-1.5 pl-8 pr-3 text-sm text-white placeholder-white/40 outline-none border border-transparent focus:border-white/20 transition"
             />
-            <svg className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
-          <button className="text-gray-500 hover:text-gray-700" title="Ajustes (próximamente)">
+          <button className="text-white/40 hover:text-white transition" title="Ajustes (próximamente)">
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -230,31 +228,31 @@ function Header({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <div className="flex rounded-lg border border-gray-200 bg-white p-0.5">
+        <div className="flex rounded-full bg-surface-elevated p-0.5">
           <button
             onClick={() => onChangeVentana("hoy")}
-            className={`rounded-md px-3 py-1 text-sm font-medium transition ${
+            className={`rounded-full px-4 py-1 text-sm font-medium transition ${
               ventana === "hoy"
-                ? "bg-gray-900 text-white"
-                : "text-gray-600 hover:text-gray-900"
+                ? "bg-white text-ink"
+                : "text-white/60 hover:text-white"
             }`}
           >
             Hoy
           </button>
           <button
             onClick={() => onChangeVentana("semana")}
-            className={`rounded-md px-3 py-1 text-sm font-medium transition ${
+            className={`rounded-full px-4 py-1 text-sm font-medium transition ${
               ventana === "semana"
-                ? "bg-gray-900 text-white"
-                : "text-gray-600 hover:text-gray-900"
+                ? "bg-white text-ink"
+                : "text-white/60 hover:text-white"
             }`}
           >
             Semana
           </button>
         </div>
-        <span className="text-sm text-gray-500">📅 {fecha}</span>
+        <span className="text-sm text-white/40">📅 {fecha}</span>
         {ultimaActualizacion && (
-          <span className="ml-auto text-xs text-gray-400">
+          <span className="ml-auto text-xs text-white/40">
             Actualizado {haceTiempo(ultimaActualizacion)}
           </span>
         )}
@@ -283,7 +281,7 @@ function MobileFilters({
       <select
         value={filtroCategoria ?? "todas"}
         onChange={(e) => onChangeCategoria(e.target.value === "todas" ? null : e.target.value)}
-        className="shrink-0 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700"
+        className="shrink-0 rounded-full bg-surface-elevated px-3 py-1.5 text-sm text-white border border-hairline-dark outline-none"
       >
         {categorias.map((cat) => (
           <option key={cat} value={cat}>
@@ -294,7 +292,7 @@ function MobileFilters({
       <select
         value={filtroTarjeta ?? "todas"}
         onChange={(e) => onChangeTarjeta(e.target.value === "todas" ? null : e.target.value)}
-        className="shrink-0 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700"
+        className="shrink-0 rounded-full bg-surface-elevated px-3 py-1.5 text-sm text-white border border-hairline-dark outline-none"
       >
         {tarjetas.map((t) => (
           <option key={t} value={t}>
@@ -325,7 +323,7 @@ function SidebarFilters({
     <aside className="hidden w-56 shrink-0 lg:block">
       <div className="mt-4 space-y-6">
         <div>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/40">
             Categoría
           </h3>
           <div className="space-y-1">
@@ -333,10 +331,10 @@ function SidebarFilters({
               <button
                 key={cat}
                 onClick={() => onChangeCategoria(cat === "todas" ? null : cat)}
-                className={`block w-full rounded px-2 py-1 text-left text-sm transition ${
+                className={`block w-full rounded-full px-3 py-1.5 text-left text-sm transition ${
                   (cat === "todas" && !filtroCategoria) || filtroCategoria === cat
-                    ? "bg-gray-100 font-medium text-gray-900"
-                    : "text-gray-600 hover:text-gray-900"
+                    ? "bg-white text-ink font-medium"
+                    : "text-white/60 hover:text-white"
                 }`}
               >
                 {cat === "todas" ? "Todas" : cat}
@@ -345,7 +343,7 @@ function SidebarFilters({
           </div>
         </div>
         <div>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/40">
             Tarjeta
           </h3>
           <div className="space-y-1">
@@ -353,10 +351,10 @@ function SidebarFilters({
               <button
                 key={t}
                 onClick={() => onChangeTarjeta(t === "todas" ? null : t)}
-                className={`block w-full rounded px-2 py-1 text-left text-sm transition ${
+                className={`block w-full rounded-full px-3 py-1.5 text-left text-sm transition ${
                   (t === "todas" && !filtroTarjeta) || filtroTarjeta === t
-                    ? "bg-gray-100 font-medium text-gray-900"
-                    : "text-gray-600 hover:text-gray-900"
+                    ? "bg-white text-ink font-medium"
+                    : "text-white/60 hover:text-white"
                 }`}
               >
                 {t === "todas" ? "Todas" : t}
@@ -387,34 +385,34 @@ function Card({
   return (
     <article
       onClick={onClick}
-      className="cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md"
+      className="cursor-pointer rounded-card border border-hairline-light bg-white p-4 transition hover:border-gray-300"
     >
       <div className="mb-2 flex items-start justify-between">
-        <h2 className="font-semibold">{comercio.comercio}</h2>
-        <span className="whitespace-nowrap rounded bg-gray-100 px-2 py-0.5 text-xs uppercase text-gray-500">
+        <h2 className="truncate text-base font-semibold text-ink">{comercio.comercio}</h2>
+        <span className="shrink-0 rounded-full bg-surface-soft px-2 py-0.5 text-xs font-medium text-ink">
           {comercio.categoria}
         </span>
       </div>
       <ul className="space-y-1.5 text-sm">
         {comercio.beneficios.map((b) => (
           <li key={b.id} className="flex justify-between gap-2">
-            <span className="truncate">
+            <span className="truncate text-mute">
               {b.tarjeta}{" "}
-              <span className="text-gray-400">({b.medio_pago})</span>
+              <span className="text-stone">({b.medio_pago})</span>
             </span>
-            <span className="shrink-0 font-medium">
+            <span className="shrink-0 font-semibold text-ink">
               {formatoValor(b)}
             </span>
           </li>
         ))}
       </ul>
       {diasUnicos.length > 0 && (
-        <p className="mt-2 text-xs text-gray-400">
+        <p className="mt-2 text-xs text-stone">
           {resumirDias(diasUnicos)}
         </p>
       )}
       {comercio.beneficios[0]?.condiciones && (
-        <p className="mt-0.5 text-xs text-gray-400">
+        <p className="mt-0.5 text-xs text-stone">
           {comercio.beneficios[0].condiciones}
         </p>
       )}
@@ -431,56 +429,56 @@ function ModalDetalle({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 lg:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 lg:items-center"
       onClick={onClose}
     >
       <div
-        className="max-h-[85vh] w-full overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl lg:max-w-lg lg:rounded-2xl"
+        className="max-h-[85vh] w-full overflow-y-auto rounded-t-card bg-surface-elevated p-6 lg:max-w-lg lg:rounded-card"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <button onClick={onClose} className="text-white/60 hover:text-white transition">
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h2 className="text-lg font-semibold">{comercio.comercio}</h2>
+            <h2 className="text-lg font-semibold text-white">{comercio.comercio}</h2>
           </div>
-          <span className="rounded bg-gray-100 px-2 py-0.5 text-xs uppercase text-gray-500">
+          <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-medium text-white">
             {comercio.categoria}
           </span>
         </div>
 
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-hairline-dark">
           {comercio.beneficios.map((b) => (
             <div key={b.id} className="flex items-center justify-between py-3">
               <div>
-                <p className="text-sm font-medium">
+                <p className="text-sm font-medium text-white">
                   {b.tarjeta}{" "}
-                  <span className="font-normal text-gray-400">
+                  <span className="font-normal text-white/50">
                     ({b.medio_pago})
                   </span>
                 </p>
                 {b.dias && b.dias.length > 0 && (
-                  <p className="mt-0.5 text-xs text-gray-400">
+                  <p className="mt-0.5 text-xs text-white/50">
                     Días: {resumirDias(b.dias)}
                   </p>
                 )}
                 {b.condiciones && (
-                  <p className="mt-0.5 text-xs text-gray-400">
+                  <p className="mt-0.5 text-xs text-white/50">
                     {b.condiciones}
                   </p>
                 )}
               </div>
-              <span className="shrink-0 text-lg font-semibold">
+              <span className="shrink-0 text-lg font-semibold text-white">
                 {formatoValor(b)}
               </span>
             </div>
           ))}
         </div>
 
-        <div className="mt-4 border-t border-gray-100 pt-4 text-xs text-gray-400">
+        <div className="mt-4 border-t border-hairline-dark pt-4 text-xs text-white/40">
           {comercio.beneficios[0]?.vigencia_hasta && (
             <p>Vigencia: hasta {new Date(comercio.beneficios[0].vigencia_hasta).toLocaleDateString("es-CL")}</p>
           )}
@@ -491,7 +489,7 @@ function ModalDetalle({
                 href={comercio.beneficios[0].fuente}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline hover:text-gray-600"
+                className="underline hover:text-white/60"
               >
                 {comercio.beneficios[0].fuente}
               </a>
