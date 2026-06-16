@@ -1,0 +1,28 @@
+# Node / Next.js
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-error.log*
+
+# Env / secrets
+.env
+.env.local
+.env*.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Playwright
+playwright-report/
+test-results/
+
+# OS / editor
+.DS_Store
+*.swp
+.vscode/
+.idea/

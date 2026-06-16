@@ -1,0 +1,33 @@
+name: scraper
+
+# Corre el scraper de forma programada y puebla Supabase.
+# La web no scrapea en vivo; solo lee lo que este job deja en la BD.
+on:
+  schedule:
+    - cron: "0 9,21 * * *"   # 09:00 y 21:00 UTC (~06:00 y 18:00 en Chile)
+  workflow_dispatch:          # permite ejecutarlo a mano desde GitHub
+
+jobs:
+  run-scraper:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scraper
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      - name: Run scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python main.py
