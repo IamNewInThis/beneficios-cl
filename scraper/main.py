@@ -48,11 +48,11 @@ def main() -> int:
             tarjeta_id = db.upsert_tarjeta(client, raw["tarjeta"], raw.get("emisor"))
             beneficios.append(normalize(raw, tarjeta_id))
 
-        n = db.insert_beneficios(client, beneficios)
+        n = db.replace_beneficios(client, beneficios)
         total += n
-        print(f"[OK] fuente '{nombre}': {n} beneficios insertados")
+        print(f"[OK] fuente '{nombre}': {n} beneficios actualizados")
 
-    print(f"\nListo. {total} beneficios insertados. Fuentes fallidas: {fallidas}.")
+    print(f"\nListo. {total} beneficios actualizados. Fuentes fallidas: {fallidas}.")
     return 1 if fallidas and total == 0 else 0
 
 

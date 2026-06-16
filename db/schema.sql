@@ -17,7 +17,7 @@ create table if not exists beneficio (
   tarjeta_id     bigint not null references tarjeta(id) on delete cascade,
   medio_pago     text not null check (medio_pago in ('credito','debito')),
   comercio       text not null,            -- ej. "Cruz Verde"
-  categoria      text not null check (categoria in ('super','farmacia','comida','combustible')),
+  categoria      text not null,            -- rubro libre: super, farmacia, bebidas, tienda, etc.
   tipo           text not null check (tipo in ('porcentaje','monto','precio_fijo')),
   valor          numeric not null,         -- 20 = 20% ; o monto/precio según tipo
   dias           text[] not null default '{}',  -- ej. {'martes','miercoles'}

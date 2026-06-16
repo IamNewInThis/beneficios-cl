@@ -1,6 +1,13 @@
 // Tipos compartidos del dominio. Reflejan la vista `beneficio_detalle`.
 
-export type Categoria = "super" | "farmacia" | "comida" | "combustible";
+// Rubro del comercio. Texto libre (la fuente puede traer rubros nuevos);
+// estos son los más comunes, a modo de referencia/autocompletado.
+export type Categoria =
+  | "super" | "farmacia" | "comida" | "combustible"
+  | "bebidas" | "perfumeria" | "tienda" | "tecnologia"
+  | "viajes" | "entretenimiento" | "salud" | "belleza" | "mascotas"
+  | "otros"
+  | (string & {});
 export type MedioPago = "credito" | "debito";
 export type TipoBeneficio = "porcentaje" | "monto" | "precio_fijo";
 
