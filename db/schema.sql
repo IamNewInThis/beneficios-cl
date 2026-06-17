@@ -24,7 +24,8 @@ create table if not exists beneficio (
   condiciones    text,                     -- tope, mínimo de compra, etc.
   vigencia_desde date,
   vigencia_hasta date,
-  fuente         text,                     -- url o "manual"
+  fuente         text,                     -- url del listado (clave de dedup)
+  url            text,                     -- deep-link al beneficio concreto (validación)
   actualizado_en timestamptz not null default now(),
   created_at     timestamptz not null default now()
 );
@@ -40,7 +41,7 @@ create or replace view beneficio_detalle as
 select
   b.id, b.comercio, b.categoria, b.tipo, b.valor,
   b.medio_pago, b.dias, b.condiciones,
-  b.vigencia_desde, b.vigencia_hasta, b.fuente, b.actualizado_en,
+  b.vigencia_desde, b.vigencia_hasta, b.fuente, b.url, b.actualizado_en,
   t.id as tarjeta_id, t.nombre as tarjeta, t.emisor
 from beneficio b
 join tarjeta t on t.id = b.tarjeta_id;

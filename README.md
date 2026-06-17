@@ -48,10 +48,10 @@ npm run dev                  # http://localhost:3000
 ```bash
 cd scraper
 cp .env.example .env         # completar con la SERVICE ROLE key de Supabase
-python -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 playwright install chromium
-python main.py               # scrapea las fuentes y puebla la BD
+python3 main.py               # scrapea las fuentes y puebla la BD
 ```
 
 ## Estado

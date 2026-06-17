@@ -26,6 +26,7 @@ def normalize(raw: dict, tarjeta_id: int) -> dict:
         "vigencia_desde": raw.get("vigencia_desde"),
         "vigencia_hasta": raw.get("vigencia_hasta"),
         "fuente": raw.get("fuente"),
+        "url": raw.get("url"),
     }
 
 

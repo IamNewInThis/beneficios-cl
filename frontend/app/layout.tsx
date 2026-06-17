@@ -20,7 +20,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" className={inter.variable}>
-      <body className="min-h-screen bg-black text-white antialiased font-sans selection:bg-cobalt/30">
+      <body
+        // Extensiones del navegador (ej. ColorZilla añade `cz-shortcut-listen`)
+        // mutan el <body> antes de la hidratación; esto evita el falso warning.
+        suppressHydrationWarning
+        className="min-h-screen bg-black text-white antialiased font-sans selection:bg-cobalt/30"
+      >
         {children}
       </body>
     </html>

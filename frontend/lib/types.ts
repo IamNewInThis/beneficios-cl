@@ -23,6 +23,7 @@ export interface BeneficioDetalle {
   vigencia_desde: string | null;
   vigencia_hasta: string | null;
   fuente: string | null;
+  url: string | null;
   actualizado_en: string;
   tarjeta_id: number;
   tarjeta: string;

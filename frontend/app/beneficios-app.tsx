@@ -21,14 +21,25 @@ function diasSemana(): string[] {
   return Array.from({ length: 7 }, (_, i) => DIAS[(hoy + i) % 7]);
 }
 
+// Un beneficio sigue vigente si no tiene fecha de término (no sabemos cuándo
+// vence → lo mostramos) o si la fecha es hoy o futura. Solo escondemos los que
+// tienen una `vigencia_hasta` explícita ya pasada.
+function estaVigente(b: BeneficioDetalle): boolean {
+  if (!b.vigencia_hasta) return true;
+  const hoy = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  return b.vigencia_hasta.slice(0, 10) >= hoy;
+}
+
 function filtrarPorVentana(
   items: BeneficioDetalle[],
   ventana: "hoy" | "semana"
 ): BeneficioDetalle[] {
   const permitidos = ventana === "hoy" ? [diaDeHoy()] : diasSemana();
   return items.filter(
-    (b) => !b.dias || b.dias.length === 0 ||
+    (b) => estaVigente(b) && (
+      !b.dias || b.dias.length === 0 ||
       b.dias.some((d) => permitidos.includes(d.toLowerCase()))
+    )
   );
 }
 
@@ -382,19 +393,23 @@ function Card({
     ),
   ];
 
+  const MAX_VISIBLE = 3;
+  const visibles = comercio.beneficios.slice(0, MAX_VISIBLE);
+  const ocultos = comercio.beneficios.length - visibles.length;
+
   return (
     <article
       onClick={onClick}
-      className="cursor-pointer rounded-card border border-hairline-light bg-white p-4 transition hover:border-gray-300"
+      className="flex cursor-pointer flex-col rounded-card border border-hairline-light bg-white p-4 transition hover:border-gray-300"
     >
-      <div className="mb-2 flex items-start justify-between">
+      <div className="mb-2 flex items-start justify-between gap-2">
         <h2 className="truncate text-base font-semibold text-ink">{comercio.comercio}</h2>
         <span className="shrink-0 rounded-full bg-surface-soft px-2 py-0.5 text-xs font-medium text-ink">
           {comercio.categoria}
         </span>
       </div>
       <ul className="space-y-1.5 text-sm">
-        {comercio.beneficios.map((b) => (
+        {visibles.map((b) => (
           <li key={b.id} className="flex justify-between gap-2">
             <span className="truncate text-mute">
               {b.tarjeta}{" "}
@@ -406,14 +421,14 @@ function Card({
           </li>
         ))}
       </ul>
-      {diasUnicos.length > 0 && (
-        <p className="mt-2 text-xs text-stone">
-          {resumirDias(diasUnicos)}
+      {ocultos > 0 && (
+        <p className="mt-1.5 text-xs font-medium text-stone">
+          +{ocultos} {ocultos === 1 ? "tarjeta" : "tarjetas"} más
         </p>
       )}
-      {comercio.beneficios[0]?.condiciones && (
-        <p className="mt-0.5 text-xs text-stone">
-          {comercio.beneficios[0].condiciones}
+      {diasUnicos.length > 0 && (
+        <p className="mt-2 truncate text-xs text-stone">
+          {resumirDias(diasUnicos)}
         </p>
       )}
     </article>
@@ -482,16 +497,16 @@ function ModalDetalle({
           {comercio.beneficios[0]?.vigencia_hasta && (
             <p>Vigencia: hasta {new Date(comercio.beneficios[0].vigencia_hasta).toLocaleDateString("es-CL")}</p>
           )}
-          {comercio.beneficios[0]?.fuente && (
+          {(comercio.beneficios[0]?.url || comercio.beneficios[0]?.fuente) && (
             <p className="mt-1">
               Fuente:{" "}
               <a
-                href={comercio.beneficios[0].fuente}
+                href={comercio.beneficios[0].url || comercio.beneficios[0].fuente!}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline hover:text-white/60"
               >
-                {comercio.beneficios[0].fuente}
+                {comercio.beneficios[0].url || comercio.beneficios[0].fuente}
               </a>
             </p>
           )}

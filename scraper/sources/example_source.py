@@ -20,7 +20,8 @@ Formato de cada beneficio:
         "condiciones": "Tope $15.000",
         "vigencia_desde": None,           # "YYYY-MM-DD" o None
         "vigencia_hasta": "2026-07-31",
-        "fuente": "manual:example",
+        "fuente": "manual:example",      # url del listado (clave de dedup)
+        "url": None,                      # deep-link al beneficio concreto o None
     }
 """
 
