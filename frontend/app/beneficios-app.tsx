@@ -137,7 +137,7 @@ export function BeneficiosApp({ beneficios }: { beneficios: BeneficioDetalle[] }
   const ultimaActualizacion = maxActualizacion(beneficios);
 
   return (
-    <main className="mx-auto min-h-screen max-w-7xl px-4 py-4">
+    <div className="mx-auto max-w-7xl px-4 py-4">
       <Header
         ventana={ventana}
         onChangeVentana={setVentana}
@@ -167,6 +167,12 @@ export function BeneficiosApp({ beneficios }: { beneficios: BeneficioDetalle[] }
         />
 
         <div className="flex-1">
+          {comercios.length > 0 && (
+            <p className="mt-4 text-xs text-white/30">
+              {comercios.length} {comercios.length === 1 ? "comercio" : "comercios"} ·{" "}
+              {comercios.reduce((s, c) => s + c.beneficios.length, 0)} beneficios
+            </p>
+          )}
           {comercios.length === 0 ? (
             <div className="mt-12 rounded-card border border-hairline-dark p-8 text-center text-white/40">
               {beneficios.length === 0
@@ -193,7 +199,7 @@ export function BeneficiosApp({ beneficios }: { beneficios: BeneficioDetalle[] }
           onClose={() => setSeleccionado(null)}
         />
       )}
-    </main>
+    </div>
   );
 }
 

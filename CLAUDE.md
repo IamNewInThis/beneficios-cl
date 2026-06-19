@@ -172,8 +172,10 @@ trae poco, sospechá de datos embebidos antes que de Playwright.
 ## Estado actual vs. convenciones
 
 - **Fuentes en `SOURCES`** (las corre `main.py`/el cron): `mach`, `tenpo`,
-  `bancofalabella`, `bci`, `bancochile`. `bancoestado` es un stub vacío.
+  `bancofalabella`, `bci`, `bancochile`, `cencosud`, `bancoripley`.
   `example_source` ya no se registra (queda como referencia del formato de salida).
+  `bancoripley` usa Playwright **headless** (el cron ya hace `playwright install
+  --with-deps chromium`); no tiene URL por beneficio (solo anclas de categoría).
 - **`bancosantander` NO está en `SOURCES`** a propósito: es una fuente
   **manual/local** (Akamai + headful, ver "Fuentes especiales" abajo). Sus datos
   ya están en la BD, pero se refresca a mano.
@@ -221,9 +223,12 @@ python -c "from sources import mach; print(mach.scrape())"
   `ANTHROPIC_API_KEY` (de pago — cada corrida llama a Claude; con Haiku son
   centavos/mes). Para Falabella además `FALABELLA_CONTENTFUL_TOKEN` (token público
   de Falabella, ver "Fuentes especiales").
-- ⚠️ **Gap conocido**: `.github/workflows/scraper.yml` aún NO pasa
-  `ANTHROPIC_API_KEY` (solo los secrets de Supabase). El cron fallará hasta
-  agregar ese secret al workflow y al repo de GitHub.
+- ⚠️ **Gap conocido (cron roto hasta resolverlo)**: `.github/workflows/scraper.yml`
+  solo pasa los secrets de Supabase. Faltan **`ANTHROPIC_API_KEY`** (la usan
+  todas las fuentes con IA) y **`FALABELLA_CONTENTFUL_TOKEN`**. Este último es
+  peor: `bancofalabella` lo lee a nivel de módulo (`os.environ[...]`), así que sin
+  esa var `import sources` revienta y `main.py` muere antes de correr nada (tumba
+  el cron entero). Hay que agregar ambos al workflow Y a los secrets del repo.
 - Migraciones de BD: ejecutar los `.sql` de `db/migrations/` en el SQL Editor de
   Supabase (no hay runner automático).
 - No hay suite de tests ni linter de Python configurados todavía.
