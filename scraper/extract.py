@@ -284,4 +284,21 @@ def extraer_beneficios(
 
         b["fuente"] = fuente
         beneficios.append(b)
-    return beneficios
+
+    # Dedup de filas idénticas: el modelo a veces emite el mismo beneficio dos
+    # veces. Dos filas con TODOS los campos iguales (incl. tarjeta, medio, url y
+    # días) son duplicados reales; las distintas por tarjeta/medio se conservan.
+    vistos: set[tuple] = set()
+    unicos = []
+    for b in beneficios:
+        clave = (
+            b["tarjeta"], b["medio_pago"], b["comercio"], b["categoria"],
+            b["tipo"], b["valor"], tuple(b.get("dias") or []),
+            b.get("vigencia_desde"), b.get("vigencia_hasta"),
+            b.get("url"), b.get("condiciones"),
+        )
+        if clave in vistos:
+            continue
+        vistos.add(clave)
+        unicos.append(b)
+    return unicos

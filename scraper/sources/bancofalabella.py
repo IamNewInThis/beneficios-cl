@@ -8,6 +8,8 @@ import os
 import requests
 from dotenv import load_dotenv
 
+from extract import _normalizar_categoria, limpiar_condiciones
+
 load_dotenv()
 
 # Token de Contentful Content Delivery (solo lectura) del espacio público de
@@ -23,6 +25,7 @@ query Benefits($limit: Int, $skip: Int) {
     total
     items {
       commerceName
+      cardUrl
       creditCards
       discount
       discountDays
@@ -45,7 +48,8 @@ query Benefits($limit: Int, $skip: Int) {
 }
 """
 
-FUENTE = "https://www.bancofalabella.cl/descuentos"
+DOMINIO = "https://www.bancofalabella.cl"
+FUENTE = f"{DOMINIO}/descuentos"
 EMISOR = "Banco Falabella"
 
 DIAS_MAP = {
@@ -103,17 +107,26 @@ def _armar_condiciones(item: dict) -> str | None:
         partes.append(item["couponInstructions"])
     if not partes:
         return None
-    return " | ".join(partes)
+    # Quita boilerplate legal y acota el largo (misma defensa que el extractor IA).
+    return limpiar_condiciones(" | ".join(partes))
 
 
 def _transformar(item: dict) -> list[dict]:
     rows: list[dict] = []
     tarjetas = item.get("creditCards") or ["CMR Mastercard"]
-    categoria = _elegir_categoria(item.get("relatedCategory"))
+    # Categoría canónica (mismo vocabulario que Mach/Tenpo). `relatedCategory`
+    # trae rubros libres ("restaurantes", "farmacia", "elite"); los colapsamos.
+    categoria = _normalizar_categoria(_elegir_categoria(item.get("relatedCategory")))
     tipo = _determinar_tipo(item)
     valor = item.get("discount") or 0
     dias = _normalizar_dias(item.get("discountDays"))
     condiciones = _armar_condiciones(item)
+    # Deep-link al detalle del beneficio. `cardUrl` trae la ruta exacta que usa
+    # el sitio ("/descuentos/detalle/<slug>"); el slug es editorial y NO derivable
+    # del nombre (ej. "Sabor y Aroma" -> "40-sabor-y-aroma"), por eso lo tomamos
+    # de Contentful y no lo construimos a mano.
+    card_url = (item.get("cardUrl") or "").strip()
+    url = f"{DOMINIO}{card_url}" if card_url.startswith("/") else (card_url or None)
 
     for tarjeta in tarjetas:
         rows.append({
@@ -129,6 +142,7 @@ def _transformar(item: dict) -> list[dict]:
             "vigencia_desde": item.get("initDate"),
             "vigencia_hasta": item.get("endDate"),
             "fuente": FUENTE,
+            "url": url,
         })
     return rows
 
@@ -160,7 +174,9 @@ def scrape() -> list[dict]:
             if not item.get("commerceName"):
                 continue
             rows = _transformar(item)
-            rows = [r for r in rows if r["valor"] > 0]
+            # `valor <= 1` es el placeholder sin cifra real (ej. "Especial Día
+            # del Padre" con discount:1). Se descarta en todas las fuentes.
+            rows = [r for r in rows if r["valor"] > 1]
             beneficios.extend(rows)
 
         skip += limit

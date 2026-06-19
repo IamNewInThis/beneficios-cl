@@ -48,7 +48,9 @@ GitHub Actions (cron) -> scraper/ (Python) --fetch--> sitio
 
 ## Estructura
 
-- `frontend/` — Next.js 15 + TypeScript + Tailwind. Pantalla "Beneficios de hoy".
+- `frontend/` — Next.js 16 + React 19 + TypeScript + Tailwind. `app/page.tsx`
+  (server, trae datos paginados) + `app/beneficios-app.tsx` (client, filtros y
+  agrupado por comercio).
 - `scraper/` — Python.
   - `main.py` — recorre `SOURCES`, normaliza y guarda (con dedup por fuente).
   - `extract.py` — **helper genérico de extracción con IA** (texto → beneficios
@@ -65,9 +67,13 @@ GitHub Actions (cron) -> scraper/ (Python) --fetch--> sitio
 - **Card por comercio**, agrupando tarjetas y distinguiendo `credito`/`debito`.
 - **Orden aleatorio** de resultados en la v1 (sin señal de relevancia aún).
 - **Toggle Hoy / Semana** (ventana de ~7 días) como vista temporal.
-- **Categoría libre** (texto): la IA asigna el rubro (`super`, `farmacia`,
-  `comida`, `combustible`, `bebidas`, `perfumeria`, `tienda`, `viajes`, etc.).
-  Ya NO hay enum fijo de 4 categorías — se soltó en `db/migrations/001`.
+- **Categoría: texto libre en la BD, pero vocabulario CANÓNICO en código.** No
+  hay `check` en Postgres (se soltó el enum en `db/migrations/001`), pero
+  `extract.py::_normalizar_categoria()` colapsa lo que devuelve la IA a un set
+  fijo (`comida`, `salud`, `entretenimiento`, `viajes`, `transporte`, `mercado`,
+  `tienda`, `belleza`, `mascotas`, `hogar`, `servicios`, `combustible`, `otros`),
+  para que el filtro lateral del front sea consistente. "comida" cubre todo lo
+  gastronómico; "salud" incluye farmacias. Default `otros`.
 - **Extracción con IA, no parsing a mano** (ver sección dedicada).
 - Cada fuente aislada (una caída no tumba al resto).
 
@@ -76,8 +82,13 @@ GitHub Actions (cron) -> scraper/ (Python) --fetch--> sitio
 - Tablas en `db/schema.sql`: `tarjeta` (id, nombre único, emisor) y `beneficio`
   (FK a tarjeta, `medio_pago` credito|debito, `comercio`, `categoria`, `tipo`
   porcentaje|monto|precio_fijo, `valor`, `dias text[]`, `condiciones`,
-  `vigencia_desde/hasta`, `fuente`). La web lee de la **vista
+  `vigencia_desde/hasta`, `fuente`, `url`). La web lee de la **vista
   `beneficio_detalle`** (beneficio + nombre de tarjeta ya unidos).
+- **`url` = deep-link al beneficio concreto** (no a la fuente). Se agregó en
+  `db/migrations/002`. Sirve para validar y para el "Ver en el sitio" del modal.
+  OJO: es distinto de `fuente` (la URL del listado, estable, que usa el dedup).
+  Las fuentes lo inyectan en el texto como marcador `<url:...>` y el extractor lo
+  copia (validándolo contra un set de urls reales). Ver "Extracción con IA".
 - **Contrato fuente→BD**: cada `scrape()` devuelve dicts con el formato de
   `sources/example_source.py`. `main.py::normalize()` los mapea a la tabla
   `beneficio`; `db.upsert_tarjeta()` resuelve/crea la tarjeta por nombre.
@@ -85,11 +96,14 @@ GitHub Actions (cron) -> scraper/ (Python) --fetch--> sitio
   `fuente` aparece en el lote nuevo y reinserta. Así cada corrida (y el cron, 2×
   al día) deja un snapshot fresco sin acumular duplicados. Una fuente que NO
   corre conserva sus datos. Por eso cada beneficio debe traer un `fuente` estable.
-- **El filtrado por día NO ocurre en SQL**: `frontend/app/page.tsx` trae *todos* los
-  beneficios y filtra "aplica hoy" en el server component (`aplicaHoy`: lista de
-  días vacía = siempre aplica). `MedioPago`/`TipoBeneficio` en
-  `frontend/lib/types.ts` deben matchear los `check` del schema; `Categoria` es
-  texto libre (unión laxa con `(string & {})`), sin `check` en la BD.
+- **El filtrado NO ocurre en SQL**: `frontend/app/page.tsx` (server) trae *todos*
+  los beneficios; el filtrado por día/ventana, vigencia y los filtros de
+  categoría/comercio/banco ocurren en `frontend/app/beneficios-app.tsx` (client).
+  Convenciones: `dias` vacío = aplica todos los días; `vigencia_hasta` NULL = se
+  muestra (NULL ≠ vencido), `vigencia_hasta < hoy` = se oculta.
+  `MedioPago`/`TipoBeneficio` en `frontend/lib/types.ts` deben matchear los
+  `check` del schema; `Categoria` es texto libre (unión laxa con `(string & {})`),
+  sin `check` en la BD (la consistencia la da el normalizador del scraper).
 - **Aislamiento de fuentes**: `main.py` envuelve cada `source.scrape()` en
   try/except; una fuente que lanza excepción se cuenta como fallida y no detiene
   al resto. Exit code 1 solo si hubo fallidas y 0 insertados.
@@ -99,8 +113,8 @@ GitHub Actions (cron) -> scraper/ (Python) --fetch--> sitio
 El paso difícil no es bajar la página sino convertir la prosa de marketing a
 `{comercio, categoria, tipo, valor, dias, ...}`. En vez de parsers frágiles por
 sitio, hay **un solo helper genérico**: `extract.py::extraer_beneficios(texto,
-tarjeta, emisor, fuente)`. Lo único que cambia por fuente es de dónde sale el
-`texto`.
+tarjeta, emisor, fuente, urls_validas=None, medios_por_url=None)`. Lo único que
+cambia por fuente es de dónde sale el `texto`.
 
 - Usa **Claude Haiku 4.5** (`MODEL` en `extract.py`) con **structured output**
   (`output_config={"format": {"type": "json_schema", "schema": ...}}`) →
@@ -110,12 +124,25 @@ tarjeta, emisor, fuente)`. Lo único que cambia por fuente es de dónde sale el
 - `temperature=0` para consistencia. Aun así la extracción **no es 100%
   determinista** en casos borde (valores vagos, "gratis", "hasta X%"): el conteo
   final puede fluctuar entre corridas. Los beneficios claros salen estables.
-- **Reglas anti-invención**: el prompt (`INSTRUCCIONES`) le prohíbe inventar y le
-  pide descartar beneficios sin cifra concreta; además hay un **filtro en código**
-  que tira cualquier `valor <= 0`. Mantené ambas defensas.
+- **Defensas en código (además del prompt), porque el modelo no es 100%
+  determinista — mantenelas todas:**
+  - `valor <= 1` se descarta (no solo `<= 0`): `1`/`$1` es el placeholder que el
+    modelo inventa cuando no hay cifra concreta (sorteos, "gratis", "hasta X%").
+  - `_normalizar_categoria()` colapsa la categoría al set canónico.
+  - `limpiar_condiciones()` corta el boilerplate legal y acota a ~160 chars
+    (`condiciones` debe ser la restricción accionable, no la letra chica).
+  - `urls_validas`: si la fuente inyecta marcadores `<url:...>`, cualquier `url`
+    que el modelo devuelva y no esté en ese set se anula (anti-link inventado).
+  - `medios_por_url`: si la fuente declara los medios de pago reales por url, se
+    descartan filas en un medio que la fuente NO declaró (el modelo a veces
+    agrega un "débito" espurio a un beneficio solo de crédito).
+  - **Dedup final**: filas idénticas en todos los campos se colapsan (el modelo a
+    veces repite el mismo beneficio).
 - `ANTHROPIC_API_KEY` se lee del entorno (`load_dotenv()` en `extract.py`).
 - La IA **no inventa**: solo reordena lo que ya está escrito en el texto que le
-  pasás.
+  pasás. Para fuentes con MUCHOS beneficios, extraer **por lotes** (ver
+  `sources/bancosantander.py::BATCH`): un solo texto gigante supera `MAX_CHARS` y
+  el `max_tokens` de la respuesta.
 
 ### Patrón "datos embebidos" (ver `sources/mach.py`)
 
@@ -126,14 +153,38 @@ el blob). La fuente extrae esas entradas estructuradas del HTML crudo (regex
 sobre el JSON embebido) y le pasa el texto limpio al extractor. Si una fuente
 trae poco, sospechá de datos embebidos antes que de Playwright.
 
+### Fuentes especiales (no siguen el patrón "requests → IA")
+
+- **`bancofalabella` — Contentful, SIN IA.** El sitio usa Contentful con GraphQL
+  público; la fuente consulta el API y arma las filas directo (los datos ya
+  vienen estructurados, no hace falta el LLM). Aun así reusa los guards del
+  extractor (`_normalizar_categoria`, `limpiar_condiciones`, `valor>1`). El
+  `FALABELLA_CONTENTFUL_TOKEN` es el token **público** de Falabella (no propio,
+  no se regenera). El deep-link sale del campo `cardUrl` (NO existe `slug`).
+- **`bancosantander` — Akamai + Playwright HEADFUL, MANUAL.** Detrás de Akamai
+  Bot Manager: `requests`/curl/headless dan **403**; solo pasa un navegador real
+  **headful** (`headless=False`) desde una IP residencial chilena. Por eso **no
+  está en `SOURCES`** (el cron en GitHub Actions daría 403) — se corre a mano.
+  Usa `domcontentloaded` (NUNCA `networkidle`: el sitio nunca queda idle por los
+  beacons de Akamai) y concurrencia acotada (`SANTANDER_WORKERS`, pestañas en
+  paralelo) para los ~300 detalles.
+
 ## Estado actual vs. convenciones
 
-- **Fuentes reales**: `mach` (machbank.cl) ya scrapea de verdad vía IA, además
-  de `example_source` (datos de juguete, sirve para probar la tubería).
-- **Frontend**: aún solo muestra "beneficios de hoy" agrupados por comercio. El
-  toggle Hoy/Semana, los filtros y el orden aleatorio son *objetivo de producto*,
-  **no implementados todavía** en `page.tsx`.
-- **No hay tests** ni linter de Python.
+- **Fuentes en `SOURCES`** (las corre `main.py`/el cron): `mach`, `tenpo`,
+  `bancofalabella`, `bci`, `bancochile`. `bancoestado` es un stub vacío.
+  `example_source` ya no se registra (queda como referencia del formato de salida).
+- **`bancosantander` NO está en `SOURCES`** a propósito: es una fuente
+  **manual/local** (Akamai + headful, ver "Fuentes especiales" abajo). Sus datos
+  ya están en la BD, pero se refresca a mano.
+- **Frontend**: `app/page.tsx` (server component) trae *todos* los beneficios
+  paginando y se los pasa a `app/beneficios-app.tsx` (**client component**), que
+  hace el filtrado por día/ventana, el filtro de vigencia y el agrupado por
+  comercio. El toggle Hoy/Semana y los filtros **ya existen** ahí (no es backlog).
+- **Límite de 1000 filas de PostgREST**: Supabase devuelve máx. 1000 filas por
+  request. Con >1000 beneficios, `page.tsx` **pagina con `.range()`** (orden
+  estable por `id`); sin eso, las fuentes con ids más altos quedan fuera de la web.
+- **No hay tests** ni linter de Python. `next lint` fue removido en Next 16.
 
 ## Comandos
 
@@ -151,18 +202,25 @@ cd scraper
 python3 -m venv .venv && source .venv/bin/activate
 cp .env.example .env       # SUPABASE_URL, SUPABASE_SERVICE_KEY, ANTHROPIC_API_KEY
 pip install -r requirements.txt
-# Playwright NO es necesario para las fuentes actuales (Mach usa requests).
-# Solo si agregás una fuente que requiera renderizar JS:
+# La mayoría de fuentes usan requests; SOLO `bancosantander` necesita Chromium:
 #   playwright install chromium
-python main.py                            # scrapea (llama a la IA) y puebla la BD
+python main.py                            # corre las fuentes de SOURCES y puebla la BD
 
 # Probar UNA fuente en aislamiento (sin tocar la BD):
 python -c "from sources import mach; print(mach.scrape())"
+
+# Santander (manual, NO está en SOURCES): se corre headful, en IP chilena, y se
+# escribe a mano con db.replace_beneficios. Importar el módulo directo evita
+# cargar SOURCES. SANTANDER_WORKERS controla la concurrencia (default 4).
 ```
 
-- El scraper necesita **3 secretos** en `scraper/.env`: `SUPABASE_URL`,
-  `SUPABASE_SERVICE_KEY` y `ANTHROPIC_API_KEY` (esta última es de pago — cada
-  corrida llama a Claude; con Haiku el costo es de centavos/mes).
+- **Usar `python3.13` explícito** para el venv: el `python3` por defecto puede ser
+  3.14, sin wheel de greenlet (rompe Playwright/Supabase).
+
+- El scraper necesita en `scraper/.env`: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` y
+  `ANTHROPIC_API_KEY` (de pago — cada corrida llama a Claude; con Haiku son
+  centavos/mes). Para Falabella además `FALABELLA_CONTENTFUL_TOKEN` (token público
+  de Falabella, ver "Fuentes especiales").
 - ⚠️ **Gap conocido**: `.github/workflows/scraper.yml` aún NO pasa
   `ANTHROPIC_API_KEY` (solo los secrets de Supabase). El cron fallará hasta
   agregar ese secret al workflow y al repo de GitHub.
